@@ -1,0 +1,11 @@
+flutter_native_splash:
+  android: true
+  ios: false
+  color: "#FFFFFF"
+  color_dark: "#FFFFFF"
+  image: assets/logokhoterfix.png
+  android_12:
+    color: "#FFFFFF"
+    color_dark: "#FFFFFF"
+    image: assets/logokhoterfix.png
+  web: false
