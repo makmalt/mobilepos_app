@@ -33,11 +33,11 @@ class _LoginPageState extends State<LoginPage> {
             headers: {'Content-Type': 'application/json'},
             body: json.encode({'email': email, 'password': password}),
           )
-          .timeout(const Duration(seconds: 7)); // Timeout di sini
+          .timeout(const Duration(seconds: 10)); // Timeout di sini
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final token = data['access_token'];
+        final token = data['data']['access_token'];
 
         if (token != null && token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();

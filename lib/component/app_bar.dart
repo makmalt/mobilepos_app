@@ -5,7 +5,9 @@ import 'package:http/http.dart' as http;
 
 class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final List<Widget>? actions;
   final String baseUrl = AppConfig.baseUrl;
+  final bool showBackButton;
 
   Future<void> logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
@@ -21,7 +23,8 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
       if (response.statusCode == 200) {
         await prefs.remove('access_token'); // 🔥 HAPUS TOKEN
         if (!context.mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
       } else {
         // Jika API gagal, bisa menunjukkan pesan error atau melakukan tindakan lain
         ScaffoldMessenger.of(context).showSnackBar(
@@ -63,7 +66,12 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  const CustomAppbar({super.key, required this.title});
+  const CustomAppbar({
+    super.key,
+    required this.title,
+    this.actions,
+    this.showBackButton = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +108,32 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                 ),
+                if (showBackButton)
+                  Positioned(
+                    left: 15,
+                    top: 18,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                Positioned(
+                  left: showBackButton ? 60 : 15,
+                  top: 18,
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
                 Positioned(
                   left: 330,
                   top: 18,
@@ -114,19 +148,14 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
                     },
                   ),
                 ),
-                Positioned(
-                  left: 15,
-                  top: 18,
-                  child: Text(
-                    title, // Tampilkan title yang diteruskan
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      height: 1.5,
+                if (actions != null)
+                  Positioned(
+                    right: 60,
+                    top: 18,
+                    child: Row(
+                      children: actions!,
                     ),
                   ),
-                ),
               ],
             ),
           ),

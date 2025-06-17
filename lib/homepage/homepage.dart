@@ -15,23 +15,23 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   late ItemRepository itemRepository;
   List<Item> items = [];
   List<dynamic> filteredItems = [];
   final TextEditingController searchController = TextEditingController();
   bool isLoading = true;
   bool isNull = false;
-  String baseUrl = AppConfig.baseUrl; // piskip
+  String baseUrl = AppConfig.baseUrl;
   int currentPage = 1;
-  late ScrollController _scrollController;
+  late ScrollController scrollController;
   bool hasMoreData = true;
 
   //Ambil data pertama kali
-  Future<void> _loadItems() async {
+  Future<void> loadItems() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token') ?? '';
 
@@ -56,8 +56,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  //ambil data loadmore
-  Future<void> _loadMoreItems() async {
+  Future<void> loadMoreItems() async {
     if (!hasMoreData) return;
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token') ?? '';
@@ -68,7 +67,7 @@ class _HomePageState extends State<HomePage> {
           await itemRepository.fetchDataFromApi(token, page: currentPage);
 
       if (newItems.isEmpty) {
-        hasMoreData = false; // ⛔ Set false kalau nggak ada data lagi
+        hasMoreData = false;
       } else {
         setState(() {
           items.addAll(newItems);
@@ -80,7 +79,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Fungsi untuk memfilter item berdasarkan input pencarian
+  // Fungsi filter item berdasarkan input pencarian
   void filterItems(String query) {
     if (query.isEmpty) {
       setState(() {
@@ -120,31 +119,30 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 100) {
-      _loadMoreItems();
+  void onScroll() {
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 100) {
+      loadMoreItems();
     }
   }
 
-  Future<void> _initializeRepository() async {
+  Future<void> initializeRepository() async {
     final prefs = await SharedPreferences.getInstance();
     itemRepository = ItemRepository(prefs);
-    _loadItems();
+    loadItems(); // Commented for testing
   }
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
-    //fetchitems();
-    _initializeRepository();
+    scrollController = ScrollController();
+    scrollController.addListener(onScroll);
+    initializeRepository();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    scrollController.dispose();
     super.dispose();
   }
 
@@ -176,7 +174,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 8.0),
                     Expanded(
                       child: GridView.builder(
-                        controller: _scrollController,
+                        controller: scrollController,
                         shrinkWrap: true,
                         itemCount: filteredItems.length,
                         gridDelegate:
@@ -230,8 +228,8 @@ class _HomePageState extends State<HomePage> {
                                     "Rp. ${item.harga}",
                                     style: const TextStyle(
                                       fontSize: 12.0,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black,
                                     ),
                                   ),
                                   const SizedBox(height: 4.0),
@@ -275,17 +273,17 @@ class _HomePageState extends State<HomePage> {
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.green,
                                             padding: const EdgeInsets.symmetric(
-                                                vertical: 8),
+                                                vertical: 6, horizontal: 5),
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8.0),
                                             ),
                                           ),
                                           child: const Text(
-                                            "Add",
+                                            "+",
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: 12,
+                                              fontSize: 20,
                                             ),
                                           ),
                                         ),

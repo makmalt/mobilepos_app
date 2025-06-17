@@ -42,10 +42,16 @@ dependencies:
   flutter_native_splash: ^2.4.1
   intl: ^0.20.2
   provider: ^6.1.1
+  blue_thermal_printer: ^1.2.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
+  mockito: ^5.4.4
+  http_mock_adapter: ^0.6.1
+  build_runner: ^2.4.11
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

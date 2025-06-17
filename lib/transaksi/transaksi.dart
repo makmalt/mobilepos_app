@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobilepos_app/app_config.dart';
 import 'package:mobilepos_app/component/app_bar.dart';
-import 'package:mobilepos_app/models/items.dart';
 import 'package:mobilepos_app/models/barang_transaksi.dart';
 import 'package:mobilepos_app/repository/transaksi_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,7 +10,6 @@ import 'package:provider/provider.dart';
 import 'package:mobilepos_app/providers/cart_provider.dart';
 import 'package:mobilepos_app/services/printer_service.dart';
 import 'package:mobilepos_app/screens/printer_settings_screen.dart';
-
 
 class Transaksi extends StatefulWidget {
   const Transaksi({super.key});
@@ -21,20 +19,15 @@ class Transaksi extends StatefulWidget {
 }
 
 class _TransaksiState extends State<Transaksi> {
-  List<Item> availableItems = [];
   List<BarangTransaksi> transactionItems = [];
   bool isLoading = true;
   bool isSubmitting = false;
-  List<dynamic> filteredItems = [];
   int currentPage = 1;
-  bool isLoadingMore = false;
-  bool hasMoreData = true;
   double nominalPembayaran = 0;
   double kembalian = 0;
   final PrinterService _printerService = PrinterService();
   late TransaksiRepository _transaksiRepository;
 
-  String baseUrl = AppConfig.baseUrl;
 //service
 
   @override
@@ -146,7 +139,7 @@ class _TransaksiState extends State<Transaksi> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan transaksi: $e')),
+        const SnackBar(content: Text('Gagal menyimpan transaksi')),
       );
     } finally {
       if (!mounted) return;

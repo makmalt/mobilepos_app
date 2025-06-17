@@ -7,33 +7,32 @@ class Scanbarcode extends StatefulWidget {
   const Scanbarcode({super.key});
 
   @override
-  State<Scanbarcode> createState() => _ScanbarcodeState();
+  State<Scanbarcode> createState() => ScanbarcodeState();
 }
 
-class _ScanbarcodeState extends State<Scanbarcode> {
+class ScanbarcodeState extends State<Scanbarcode> {
   final MobileScannerController scannerController = MobileScannerController();
   bool isProcessing = false;
 
   @override
   void initState() {
     super.initState();
-    scannerController.start(); // 🔥 Mulai scanner otomatis
+    scannerController.start(); // Mulai scanner otomatis
   }
 
   @override
   void dispose() {
-    scannerController.dispose(); // 🚀 Matikan scanner pas keluar halaman
+    scannerController.dispose(); // Matikan scanner pas keluar halaman
     super.dispose();
   }
 
-  void _processBarcode(String code) {
+  void processBarcode(String code) {
     if (!isProcessing) {
       setState(() {
         isProcessing = true;
       });
-
       scannerController.stop();
-
+      debugPrint('Barcode ditemukan: $code');
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -45,8 +44,6 @@ class _ScanbarcodeState extends State<Scanbarcode> {
         });
         scannerController.start();
       });
-
-      debugPrint('Barcode found! $code');
     }
   }
 
@@ -67,7 +64,7 @@ class _ScanbarcodeState extends State<Scanbarcode> {
                     debugPrint('Failed to scan Barcode');
                   } else {
                     final String code = capture.barcodes.first.rawValue!;
-                    _processBarcode(code);
+                    processBarcode(code);
                   }
                 },
               ),
