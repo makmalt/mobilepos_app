@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobilepos_app/models/items.dart';
+import 'package:mobilepos_app/data/models/items.dart';
 
 void main() {
   group('Item Model Tests', () {

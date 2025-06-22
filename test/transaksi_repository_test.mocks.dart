@@ -9,8 +9,8 @@ import 'dart:typed_data' as _i8;
 
 import 'package:blue_thermal_printer/blue_thermal_printer.dart' as _i3;
 import 'package:http/http.dart' as _i2;
-import 'package:mobilepos_app/models/barang_transaksi.dart' as _i10;
-import 'package:mobilepos_app/services/printer_service.dart' as _i9;
+import 'package:mobilepos_app/data/models/barang_transaksi.dart' as _i10;
+import 'package:mobilepos_app/data/services/printer_service.dart' as _i9;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i7;
 import 'package:shared_preferences/shared_preferences.dart' as _i4;

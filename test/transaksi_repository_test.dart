@@ -4,10 +4,10 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:mobilepos_app/models/barang_transaksi.dart';
-import 'package:mobilepos_app/repository/transaksi_repository.dart';
+import 'package:mobilepos_app/data/models/barang_transaksi.dart';
+import 'package:mobilepos_app/data/repository/transaksi_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:mobilepos_app/services/printer_service.dart';
+import 'package:mobilepos_app/data/services/printer_service.dart';
 
 // Generate mock classes
 @GenerateMocks([SharedPreferences, http.Client, PrinterService])

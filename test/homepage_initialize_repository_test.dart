@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobilepos_app/homepage/homepage.dart';
-import 'package:mobilepos_app/repository/item_repository.dart';
+import 'package:mobilepos_app/features/home/screens/homepage.dart';
+import 'package:mobilepos_app/data/repository/item_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

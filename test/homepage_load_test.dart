@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobilepos_app/models/items.dart';
-import 'package:mobilepos_app/repository/item_repository.dart';
+import 'package:mobilepos_app/data/models/items.dart';
+import 'package:mobilepos_app/data/repository/item_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';

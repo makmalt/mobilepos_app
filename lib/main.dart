@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobilepos_app/component/bottom_bar.dart';
-import 'package:mobilepos_app/loginpage/login_page.dart';
+import 'package:mobilepos_app/shared/components/bottom_bar.dart';
+import 'package:mobilepos_app/features/auth/screens/login_page.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:mobilepos_app/decider_page.dart';
-import 'package:mobilepos_app/transaksi/transaksi.dart';
+import 'package:mobilepos_app/features/splash/screens/decider_page.dart';
+import 'package:mobilepos_app/features/transaction/screens/transaksi.dart';
 import 'package:provider/provider.dart';
-import 'package:mobilepos_app/providers/cart_provider.dart';
+import 'package:mobilepos_app/shared/providers/cart_provider.dart';
 
 void main() {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();

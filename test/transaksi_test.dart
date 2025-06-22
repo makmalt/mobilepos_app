@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobilepos_app/models/barang_transaksi.dart';
+import 'package:mobilepos_app/data/models/barang_transaksi.dart';
 
 class TransaksiCalculator {
   List<BarangTransaksi> transactionItems = [];
@@ -18,8 +18,7 @@ void main() {
       calculator = TransaksiCalculator();
     });
 
-    test('Hitung total harga (banyak barang)',
-        () {
+    test('Hitung total harga (banyak barang)', () {
       calculator.transactionItems = [
         BarangTransaksi(
           barangId: 1,

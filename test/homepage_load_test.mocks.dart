@@ -5,8 +5,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i5;
 
-import 'package:mobilepos_app/models/items.dart' as _i6;
-import 'package:mobilepos_app/repository/item_repository.dart' as _i3;
+import 'package:mobilepos_app/data/models/items.dart' as _i6;
+import 'package:mobilepos_app/data/repository/item_repository.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i4;
 import 'package:shared_preferences/shared_preferences.dart' as _i2;

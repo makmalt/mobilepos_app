@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
-import 'package:mobilepos_app/services/printer_service.dart';
+import 'package:mobilepos_app/data/services/printer_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PrinterSettingsScreen extends StatefulWidget {

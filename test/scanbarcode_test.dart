@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:mobilepos_app/scanbarcode/scanbarcode.dart';
+import 'package:mobilepos_app/features/barcode/screens/scanbarcode.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 
@@ -66,7 +66,7 @@ void main() {
 
     // Verify isProcessing is true
     expect(state.isProcessing, true);
-    
+
     // Try to process another barcode while still processing
     state.processBarcode('789012');
     await tester.pump();
