@@ -127,8 +127,7 @@ void main() {
   });
 
   group('TransaksiRepository Tests', () {
-    test('completeTransaction should throw exception when items is empty',
-        () async {
+    test('completeTransaction dengan item kosong', () async {
       print('\nTest Case: completeTransaction dengan items kosong');
       try {
         await repository.completeTransaction(
@@ -149,7 +148,7 @@ void main() {
       );
     });
 
-    test('completeTransaction should handle successful API response', () async {
+    test('completeTransaction dengan response sukses', () async {
       print('\nTest Case: completeTransaction dengan response sukses');
       // Mock successful API response
       final mockResponse = {
@@ -188,7 +187,7 @@ void main() {
       expect(result['grandTotal'], 65000);
     });
 
-    test('completeTransaction should handle API error', () async {
+    test('completeTransaction dengan response error', () async {
       print('\nTest Case: completeTransaction dengan response error');
       // Mock error API response
       final mockErrorResponse = {'message': 'Failed to process transaction'};

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:mobilepos_app/core/config/app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
             headers: {'Content-Type': 'application/json'},
             body: json.encode({'email': email, 'password': password}),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -51,12 +52,52 @@ class _LoginPageState extends State<LoginPage> {
         print(error);
         errorLoginDialog(context, error['message'] ?? 'Kesalahan Login');
       }
-    } on TimeoutException catch (_) {
+    } on SocketException catch (e) {
+      print('SocketException: ${e.message}');
       errorLoginDialog(
-          context, "Waktu koneksi habis. Periksa jaringan atau server.");
+        context,
+        'Tidak ada koneksi internet. Mohon periksa koneksi Anda.',
+        showRetryButton: true,
+      );
+    } on HttpException catch (e) {
+      print('HttpException: ${e.message}');
+      errorLoginDialog(
+        context,
+        'Gagal terhubung ke server. Silakan coba lagi.',
+        showRetryButton: true,
+      );
+    } on FormatException catch (e) {
+      print('FormatException: ${e.message}');
+      errorLoginDialog(
+        context,
+        'Data yang diterima tidak valid.',
+        showRetryButton: true,
+      );
+    } on TimeoutException catch (e) {
+      print('TimeoutException: ${e.message}');
+      errorLoginDialog(
+        context,
+        'Koneksi timeout. Silakan coba lagi.',
+        showRetryButton: true,
+      );
     } catch (e) {
-      print(e);
-      errorLoginDialog(context, "Terjadi kesalahan: $e");
+      print('Error: $e');
+      String errorMessage = 'Terjadi kesalahan saat login';
+
+      if (e.toString().contains('Failed host lookup')) {
+        errorMessage =
+            'Tidak dapat menemukan server. Periksa koneksi internet Anda.';
+      } else if (e.toString().contains('Connection refused')) {
+        errorMessage = 'Server tidak dapat diakses. Silakan coba lagi nanti.';
+      } else {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+
+      errorLoginDialog(
+        context,
+        errorMessage,
+        showRetryButton: true,
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -64,7 +105,8 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void errorLoginDialog(BuildContext context, String message) {
+  void errorLoginDialog(BuildContext context, String message,
+      {bool showRetryButton = false}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -100,6 +142,24 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         actions: [
+          if (showRetryButton)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                final email = _emailController.text.trim();
+                final password = _passwordController.text.trim();
+                if (email.isNotEmpty && password.isNotEmpty) {
+                  login(email, password);
+                }
+              },
+              child: const Text(
+                'Coba Lagi',
+                style: TextStyle(
+                  color: Color(0xFF00A3FF),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(

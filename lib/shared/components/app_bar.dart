@@ -2,6 +2,7 @@ import 'package:mobilepos_app/core/config/app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:io';
 
 class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -12,6 +13,7 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
   Future<void> logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token');
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/logout'),
@@ -19,24 +21,49 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Koneksi timeout. Silakan coba lagi.');
+        },
       );
+
       if (response.statusCode == 200) {
         await prefs.remove('access_token'); // 🔥 HAPUS TOKEN
         if (!context.mounted) return;
         Navigator.of(context)
             .pushNamedAndRemoveUntil('/login', (route) => false);
       } else {
-        // Jika API gagal, bisa menunjukkan pesan error atau melakukan tindakan lain
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Terjadi kesalahan')),
-        );
+        // Jika API gagal, tetap logout dari local storage
+        await prefs.remove('access_token');
+        if (!context.mounted) return;
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
       }
-    } catch (e) {
+    } on SocketException catch (e) {
+      print('SocketException in logout: ${e.message}');
+      // Tetap logout dari local storage meski tidak ada koneksi
+      await prefs.remove('access_token');
       if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Terjadi Kesalahan')),
-      );
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } on HttpException catch (e) {
+      print('HttpException in logout: ${e.message}');
+      // Tetap logout dari local storage
+      await prefs.remove('access_token');
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } on TimeoutException catch (e) {
+      print('TimeoutException in logout: ${e.message}');
+      // Tetap logout dari local storage
+      await prefs.remove('access_token');
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } catch (e) {
+      print('Error in logout: $e');
+      // Tetap logout dari local storage
+      await prefs.remove('access_token');
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
@@ -226,4 +253,12 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(100);
+}
+
+class TimeoutException implements Exception {
+  final String message;
+  TimeoutException(this.message);
+  
+  @override
+  String toString() => message;
 }

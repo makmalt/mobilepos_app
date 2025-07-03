@@ -98,10 +98,44 @@ class _TransaksiState extends State<Transaksi> {
         context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
-          title: const Text('Transaksi Berhasil'),
-          content: Text('Kembalian: ${formatCurrency(kembalian)}'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF00A3FF),
+                  Color(0xFF0088CC),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Text(
+              'Transaksi Berhasil',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          content: Text(
+            'Kembalian: ${formatCurrency(kembalian)}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
           actions: [
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00A3FF),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               onPressed: () async {
                 try {
                   await _printerService.printReceipt(
@@ -122,14 +156,16 @@ class _TransaksiState extends State<Transaksi> {
                   );
                 }
               },
-              child: const Text('Cetak Struk'),
+              child: const Text('Cetak Struk',
+                  style: TextStyle(color: Colors.white)),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 clearTransaction();
               },
-              child: const Text('Selesai'),
+              child: const Text('Selesai',
+                  style: TextStyle(color: Color(0xFF00A3FF))),
             ),
           ],
         ),
@@ -137,8 +173,36 @@ class _TransaksiState extends State<Transaksi> {
     } catch (e) {
       if (!mounted) return;
 
+      String errorMessage = 'Gagal menyimpan transaksi';
+      
+      // Cek apakah error terkait koneksi internet
+      if (e.toString().contains('Tidak ada koneksi internet')) {
+        errorMessage = 'Tidak ada koneksi internet. Mohon periksa koneksi Anda.';
+      } else if (e.toString().contains('Gagal terhubung ke server')) {
+        errorMessage = 'Gagal terhubung ke server. Silakan coba lagi.';
+      } else if (e.toString().contains('Koneksi timeout')) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+      } else if (e.toString().contains('Token tidak ditemukan') || 
+                 e.toString().contains('401')) {
+        errorMessage = 'Sesi Anda telah berakhir. Silakan login ulang.';
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      } else {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan transaksi')),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Coba Lagi',
+            textColor: Colors.white,
+            onPressed: () {
+              completeTransaction();
+            },
+          ),
+        ),
       );
     } finally {
       if (!mounted) return;

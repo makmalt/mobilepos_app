@@ -55,7 +55,51 @@ class _DetailPageState extends State<DetailPage> {
           isLoading = false;
         });
       }
-      print("Error fetching item details: $error");
+
+      // Cek apakah error terkait koneksi internet atau server
+      if (error.toString().contains('Tidak ada koneksi internet') ||
+          error.toString().contains('Gagal terhubung ke server') ||
+          error.toString().contains('Koneksi timeout') ||
+          error.toString().contains('Tidak dapat menemukan server') ||
+          error.toString().contains('Server tidak dapat diakses')) {
+        String errorMessage = 'Gagal memuat detail barang';
+
+        if (error.toString().contains('Tidak ada koneksi internet')) {
+          errorMessage =
+              'Tidak ada koneksi internet. Mohon periksa koneksi Anda.';
+        } else if (error.toString().contains('Gagal terhubung ke server')) {
+          errorMessage = 'Gagal terhubung ke server. Silakan coba lagi.';
+        } else if (error.toString().contains('Koneksi timeout')) {
+          errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Coba Lagi',
+              textColor: Colors.white,
+              onPressed: () {
+                setState(() {
+                  isLoading = true;
+                });
+                showDetail();
+              },
+            ),
+          ),
+        );
+      } else if (error.toString().contains('Token tidak ditemukan') ||
+          error.toString().contains('401')) {
+        // Handle authentication error
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
+      } else {
+        // Untuk error lainnya (termasuk "Gagal memuat detail barang"),
+        // tidak tampilkan SnackBar, biarkan halaman menampilkan UI kosong
+        print("Error fetching item details: $error");
+      }
     }
   }
 

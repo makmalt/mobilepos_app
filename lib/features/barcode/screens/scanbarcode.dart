@@ -42,9 +42,9 @@ class ScanbarcodeState extends State<Scanbarcode> {
         setState(() {
           isProcessing = false;
         });
-        scannerController.start();
-      });
-    }
+          scannerController.start();
+        });
+      }
   }
 
   @override

@@ -10,6 +10,7 @@ import 'package:mobilepos_app/features/home/screens/detailpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:mobilepos_app/shared/providers/cart_provider.dart';
+import 'dart:io';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,6 +32,7 @@ class HomePageState extends State<HomePage> {
   int currentPage = 1;
   late ScrollController scrollController;
   bool hasMoreData = true;
+  bool _isLoadingMore = false;
 
   //Ambil data pertama kali
   Future<void> loadItems() async {
@@ -43,23 +45,66 @@ class HomePageState extends State<HomePage> {
         items = newItems;
         filteredItems = newItems;
         isLoading = false;
+        currentPage = 1; // Reset halaman ke 1
+        hasMoreData = true; // Reset flag untuk load more
       });
+      if (newItems.isEmpty) {
+        // Tampilkan SnackBar jika barang kosong
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak ada barang'),
+          ),
+        );
+      }
     } catch (error) {
       setState(() {
         isLoading = false;
       });
+
+      String errorMessage = 'Terjadi kesalahan saat memuat data';
+
+      // Cek apakah error terkait koneksi internet
+      if (error.toString().contains('Tidak ada koneksi internet')) {
+        errorMessage =
+            'Tidak ada koneksi internet. Mohon periksa koneksi Anda.';
+      } else if (error.toString().contains('Gagal terhubung ke server')) {
+        errorMessage = 'Gagal terhubung ke server. Silakan coba lagi.';
+      } else if (error.toString().contains('Token tidak ditemukan') ||
+          error.toString().contains('401')) {
+        errorMessage = 'Sesi Anda telah berakhir. Silakan login ulang.';
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
+      } else {
+        errorMessage = error.toString().replaceAll('Exception: ', '');
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Kesalahan saat menampilkan barang, Harap login ulang')),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Coba Lagi',
+            textColor: Colors.white,
+            onPressed: () {
+              setState(() {
+                isLoading = true;
+              });
+              loadItems();
+            },
+          ),
+        ),
       );
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       print("Error loading items: $error");
     }
   }
 
   Future<void> loadMoreItems() async {
-    if (!hasMoreData) return;
+    if (_isLoadingMore || !hasMoreData) return;
+    setState(() {
+      _isLoadingMore = true;
+    });
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token') ?? '';
 
@@ -69,7 +114,9 @@ class HomePageState extends State<HomePage> {
           await itemRepository.fetchDataFromApi(token, page: currentPage);
 
       if (newItems.isEmpty) {
-        hasMoreData = false;
+        setState(() {
+          hasMoreData = false;
+        });
       } else {
         setState(() {
           items.addAll(newItems);
@@ -78,6 +125,33 @@ class HomePageState extends State<HomePage> {
       }
     } catch (error) {
       print('Error loading more items: $error');
+
+      // Tampilkan pesan error yang informatif
+      String errorMessage = 'Gagal memuat data tambahan';
+
+      if (error.toString().contains('Tidak ada koneksi internet')) {
+        errorMessage =
+            'Tidak ada koneksi internet. Mohon periksa koneksi Anda.';
+      } else if (error.toString().contains('Gagal terhubung ke server')) {
+        errorMessage = 'Gagal terhubung ke server. Silakan coba lagi.';
+      } else {
+        errorMessage = error.toString().replaceAll('Exception: ', '');
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Kembalikan halaman ke sebelumnya jika gagal
+      currentPage--;
+    } finally {
+      setState(() {
+        _isLoadingMore = false;
+      });
     }
   }
 
@@ -97,6 +171,30 @@ class HomePageState extends State<HomePage> {
       });
     }).catchError((error) {
       print('Error searching items: $error');
+      // Tampilkan pesan error yang informatif
+      String errorMessage = 'Terjadi kesalahan saat mencari';
+
+      if (error.toString().contains('Tidak ada koneksi internet')) {
+        errorMessage =
+            'Tidak ada koneksi internet. Mohon periksa koneksi Anda.';
+      } else if (error.toString().contains('Gagal terhubung ke server')) {
+        errorMessage = 'Gagal terhubung ke server. Silakan coba lagi.';
+      } else {
+        errorMessage = error.toString().replaceAll('Exception: ', '');
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Kembalikan ke daftar item asli jika pencarian gagal
+      setState(() {
+        filteredItems = List.from(items);
+      });
     });
   }
 
@@ -104,20 +202,50 @@ class HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token') ?? '';
 
-    final String apiUrl = '$baseUrl/api/barang/search?q=$query';
-    final response = await http.get(
-      Uri.parse(apiUrl),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
+    try {
+      final String apiUrl = '$baseUrl/api/barang/search?q=$query';
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Koneksi timeout. Silakan coba lagi.');
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body)['data'];
-      return data.map<Item>((itemJson) => Item.fromJson(itemJson)).toList();
-    } else {
-      throw Exception('Failed to search items');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body)['data'];
+        return data.map<Item>((itemJson) => Item.fromJson(itemJson)).toList();
+      } else {
+        throw Exception('Gagal mencari barang');
+      }
+    } on SocketException catch (e) {
+      print('SocketException in search: ${e.message}');
+      throw Exception(
+          'Tidak ada koneksi internet. Mohon periksa koneksi Anda.');
+    } on HttpException catch (e) {
+      print('HttpException in search: ${e.message}');
+      throw Exception('Gagal terhubung ke server. Silakan coba lagi.');
+    } on FormatException catch (e) {
+      print('FormatException in search: ${e.message}');
+      throw Exception('Data yang diterima tidak valid.');
+    } on TimeoutException catch (e) {
+      print('TimeoutException in search: ${e.message}');
+      throw Exception(e.message);
+    } catch (error) {
+      print('Error searching items: $error');
+      if (error.toString().contains('Failed host lookup')) {
+        throw Exception(
+            'Tidak dapat menemukan server. Periksa koneksi internet Anda.');
+      } else if (error.toString().contains('Connection refused')) {
+        throw Exception('Server tidak dapat diakses. Silakan coba lagi nanti.');
+      } else {
+        throw Exception('Terjadi kesalahan saat mencari. Silakan coba lagi.');
+      }
     }
   }
 
@@ -146,6 +274,58 @@ class HomePageState extends State<HomePage> {
   void dispose() {
     scrollController.dispose();
     super.dispose();
+  }
+
+  // Fungsi untuk refresh data (pull-to-refresh)
+  Future<void> refreshItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token') ?? '';
+
+    try {
+      final newItems = await itemRepository.fetchDataFromApi(token, page: 1);
+      setState(() {
+        items = newItems;
+        filteredItems = newItems;
+        currentPage = 1; // Reset halaman ke 1
+        hasMoreData = true; // Reset flag untuk load more
+      });
+
+      // Tampilkan pesan sukses refresh
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Berhasil memperbarui ${newItems.length} barang'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (error) {
+      print("Error refreshing items: $error");
+
+      // Tampilkan pesan error yang informatif
+      String errorMessage = 'Gagal memperbarui data';
+
+      if (error.toString().contains('Tidak ada koneksi internet')) {
+        errorMessage =
+            'Tidak ada koneksi internet. Mohon periksa koneksi Anda.';
+      } else if (error.toString().contains('Gagal terhubung ke server')) {
+        errorMessage = 'Gagal terhubung ke server. Silakan coba lagi.';
+      } else if (error.toString().contains('Token tidak ditemukan') ||
+          error.toString().contains('401')) {
+        errorMessage = 'Sesi Anda telah berakhir. Silakan login ulang.';
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
+      } else {
+        errorMessage = error.toString().replaceAll('Exception: ', '');
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
@@ -206,210 +386,227 @@ class HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 16.0),
                     Expanded(
-                      child: GridView.builder(
-                        controller: scrollController,
-                        shrinkWrap: true,
-                        itemCount: filteredItems.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10.0,
-                          mainAxisSpacing: 10.0,
-                          childAspectRatio: 0.7,
-                        ),
-                        itemBuilder: (context, index) {
-                          final item = filteredItems[index];
-                          return Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.white,
-                                  Color(0xFFF0F8FF),
+                      child: RefreshIndicator(
+                        onRefresh: refreshItems,
+                        color: const Color(0xFF00A3FF),
+                        backgroundColor: Colors.white,
+                        child: GridView.builder(
+                          controller: scrollController,
+                          shrinkWrap: true,
+                          itemCount:
+                              filteredItems.length + (_isLoadingMore ? 1 : 0),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10.0,
+                            mainAxisSpacing: 10.0,
+                            childAspectRatio: 0.7,
+                          ),
+                          itemBuilder: (context, index) {
+                            if (index == filteredItems.length) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF00A3FF),
+                                ),
+                              );
+                            }
+                            final item = filteredItems[index];
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white,
+                                    Color(0xFFF0F8FF),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF00A3FF)
+                                        .withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 5),
+                                  ),
                                 ],
                               ),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color:
-                                      const Color(0xFF00A3FF).withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Product Image with modern styling
-                                  Container(
-                                    height: 130,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 3),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Product Image with modern styling
+                                    Container(
+                                      height: 130,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.1),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: CachedNetworkImage(
+                                          imageUrl:
+                                              '$baseUrlGambar${item.image}',
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                            color: const Color(0xFF00A3FF)
+                                                .withOpacity(0.1),
+                                            child: const Center(
+                                              child: CircularProgressIndicator(
+                                                color: Color(0xFF00A3FF),
+                                              ),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                            color: Colors.grey[200],
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.error,
+                                                color: Color(0xFF00A3FF),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4.0),
+
+                                    // Product Name
+                                    Text(
+                                      item.namaBarang,
+                                      style: const TextStyle(
+                                        fontSize: 11.0,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 3.0),
+
+                                    // Price with accent
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF00A3FF)
+                                            .withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: const Color(0xFF00A3FF)
+                                              .withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        "Rp. ${item.harga}",
+                                        style: const TextStyle(
+                                          fontSize: 11.0,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF00A3FF),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2.0),
+
+                                    // Stock information
+                                    Text(
+                                      "Stok: ${item.stokTersedia}",
+                                      style: TextStyle(
+                                        fontSize: 9.0,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const Spacer(),
+
+                                    // Action Buttons
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      DetailPage(id: item.id),
+                                                ),
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color(0xFF00A3FF),
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(6.0),
+                                              ),
+                                              elevation: 1,
+                                            ),
+                                            child: const Text(
+                                              "Detail",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              cartProvider.addToCart(item);
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(6.0),
+                                              ),
+                                              elevation: 1,
+                                            ),
+                                            child: const Text(
+                                              "+",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: CachedNetworkImage(
-                                        imageUrl: '$baseUrlGambar${item.image}',
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) =>
-                                            Container(
-                                          color: const Color(0xFF00A3FF)
-                                              .withOpacity(0.1),
-                                          child: const Center(
-                                            child: CircularProgressIndicator(
-                                              color: Color(0xFF00A3FF),
-                                            ),
-                                          ),
-                                        ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(
-                                          color: Colors.grey[200],
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.error,
-                                              color: Color(0xFF00A3FF),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4.0),
-
-                                  // Product Name
-                                  Text(
-                                    item.namaBarang,
-                                    style: const TextStyle(
-                                      fontSize: 11.0,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 3.0),
-
-                                  // Price with accent
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF00A3FF)
-                                          .withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: const Color(0xFF00A3FF)
-                                            .withOpacity(0.3),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      "Rp. ${item.harga}",
-                                      style: const TextStyle(
-                                        fontSize: 11.0,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF00A3FF),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2.0),
-
-                                  // Stock information
-                                  Text(
-                                    "Stok: ${item.stokTersedia}",
-                                    style: TextStyle(
-                                      fontSize: 9.0,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  const Spacer(),
-
-                                  // Action Buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailPage(id: item.id),
-                                              ),
-                                            );
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0xFF00A3FF),
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 6),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6.0),
-                                            ),
-                                            elevation: 1,
-                                          ),
-                                          child: const Text(
-                                            "Detail",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            cartProvider.addToCart(item);
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.green,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 6),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6.0),
-                                            ),
-                                            elevation: 1,
-                                          ),
-                                          child: const Text(
-                                            "+",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -486,4 +683,12 @@ class HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+class TimeoutException implements Exception {
+  final String message;
+  TimeoutException(this.message);
+
+  @override
+  String toString() => message;
 }
